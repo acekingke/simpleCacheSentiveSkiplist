@@ -1,0 +1,390 @@
+
+% VLDB template version of 2020-08-03 enhances the ACM template, version 1.7.0:
+% https://www.acm.org/publications/proceedings-template
+% The ACM Latex guide provides further information about the ACM template
+
+\documentclass[sigconf, nonacm, letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{acmart}
+
+%% The following content must be adapted for the final version
+% paper-specific
+\newcommand\vldbdoi{XX.XX/XXX.XX}
+\newcommand\vldbpages{XXX-XXX}
+% issue-specific
+\newcommand\vldbvolume{19}
+\newcommand\vldbissue{1}
+\newcommand\vldbyear{2025}
+% should be fine as it is
+\newcommand\vldbauthors{\authors}
+\newcommand\vldbtitle{\shorttitle} 
+% leave empty if no availability url should be set
+\newcommand\vldbavailabilityurl{}
+% whether page numbers should be shown or not, use 'plain' for review versions, 'empty' for camera ready
+\newcommand\vldbpagestyle{plain} 
+
+\usepackage{adjustbox}
+\usepackage{pgfplots}
+\usetikzlibrary{arrows.meta}
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\SetKw{KwDownTo}{down to}
+\begin{document}
+\title{Simple Cache-sensitive Skip list}
+
+%%
+%% The "author" command and its associated commands are used to define the authors and their affiliations.
+\author{Yuchang Ke}
+\affiliation{%
+  \institution{independent researcher}
+  \streetaddress{No. 12, Guandong Street, Hongshan District, Wuhan, Hubei Province.}
+  \city{Wuhan}
+  \state{China}
+  \postcode{430073}
+}
+\email{aceking.ke@gmail.com}
+
+\author{Bill Lv}
+\email{ideaalloc@gmail.com}
+
+\author{Weijie Zhang}
+\email{zhangweijie@gmail.com}
+
+%%
+%% The abstract is a short summary of the work to be presented in the
+%% article.
+\begin{abstract}
+      We present a cache-sensitive skiplist that is very simple and easy to implement. It only requires a few small modifications to the original skiplist to adapt it to modern CPU architectures, resulting in a performance improvement of 1.2~1.6 times, in some system it can reach 2X or 3X.
+      Unlike other optimizations, it does not require specialized instructions such as SIMD or multi-threaded programming. Instead, it takes advantage of modern compiler optimizations, making it more universal. This design can be used not only in in-memory databases or key-value stores, but also in embedded systems.  here is \href{https://github.com/acekingke/simpleCacheSentiveSkiplist}{github link}
+\keywords{skiplist; cache-sensitive; index structure}
+
+\end{abstract}
+
+\maketitle
+
+%%% do not modify the following VLDB block %%
+%%% VLDB block start %%%
+\pagestyle{\vldbpagestyle}
+\begingroup\small\noindent\raggedright\textbf{PVLDB Reference Format:}\\
+\vldbauthors. \vldbtitle. PVLDB, \vldbvolume(\vldbissue): \vldbpages, \vldbyear.\\
+\href{https://doi.org/\vldbdoi}{doi:\vldbdoi}
+\endgroup
+\begingroup
+\renewcommand\thefootnote{}\footnote{\noindent
+This work is licensed under the Creative Commons BY-NC-ND 4.0 International License. Visit \url{https://creativecommons.org/licenses/by-nc-nd/4.0/} to view a copy of this license. For any use beyond those covered by this license, obtain permission by emailing \href{mailto:info@vldb.org}{info@vldb.org}. Copyright is held by the owner/author(s). Publication rights licensed to the VLDB Endowment. \\
+\raggedright Proceedings of the VLDB Endowment, Vol. \vldbvolume, No. \vldbissue\ %
+ISSN 2150-8097. \\
+\href{https://doi.org/\vldbdoi}{doi:\vldbdoi} \\
+}\addtocounter{footnote}{-1}\endgroup
+%%% VLDB block end %%%
+
+%%% do not modify the following VLDB block %%
+%%% VLDB block start %%%
+\ifdefempty{\vldbavailabilityurl}{}{
+\vspace{.3cm}
+\begingroup\small\noindent\raggedright\textbf{PVLDB Artifact Availability:}\\
+The source code, data, and/or other artifacts have been made available at \url{\vldbavailabilityurl}.
+\endgroup
+}
+%%% VLDB block end %%%
+
+\section{Introduction}
+
+In the field of computer science, ordered data structures are a fundamental tool for organizing and managing data. Efficient execution of search, delete, and insert operations is crucial for a wide range of applications, as it directly impacts overall system performance.
+To achieve high performance in ordered data structures, many methods have been developed, such as AVL trees and Red-Black trees. However, these structures are relatively complex due to the need for rebalancing. This changed when William Pugh introduced the skip list in 1990\cite{ref1}. It introduced a randomized data structure that simplified implementation compared to traditional balanced trees.
+
+Thanks to its simplicity, the skip list has been adopted by various systems, including databases such as LevelDB\cite{ref2}, Redis\cite{ref7}, and RocksDB\cite{ref3}, Hbase\cite{ref4} in-memory caches, and the inverted index in Lucene.
+
+Skip list can be divided into multiple levels, one data level and multiple index levels. Data level is the lowest level(level 0), which stores all the data nodes. And the index levels provide short paths to access the data node at the data level, and all the levels are linked lists. Because of this, these data nodes and index nodes are non-contiguous in memory address. This causes the performance to be degraded by cache misses.
+Although ESL, CSSL has developed cache sensitive skip lists to fit modern CPU architecture, these algorithms are still complex, and CSSL uses SIMD instructions which are special in Intel. We strongly believe that the value of a skiplist lies in its simplicity.  Excessively complex cache-sensitive designs reduce the appeal of skip list variations.
+
+With the emergence of new technologies and computing architectures, particularly multi-core CPUs and vectorization, novel variants of skip lists have been developed. Such as Cache-Sensitive Skiplist (CSSL)\cite{ref5}, which merges nodes at the index level into a single array, which are named fast lanes, and all nodes in the fast lane are sorted. This design is more cache-friendly. It also uses SIMD instructions, ESL( A High-Performance Skiplist with Express Lane\cite{ref6})  also merges the nodes in index levels into a single array, and they use version-based lock protocol and lock-free operation log to implement concurrency. 
+
+
+
+\section{Design overview}
+
+In this paper, we present a simple and easy-to-implement cache-sensitive skip list. At the data level, it introduces a vector, and the nodes at this level now store arrays instead of single values. Leveraging CPU cache benefits for small arrays to enhance skip list performance. For example, consider a skip list with a vector at the data level; let's suppose the vector's maximum size is 2, as shown in Figure 1. 
+
+There are 3 key points: 1) At the data level, we use a sorted array with a fixed maximum length. Since the keys are integers, we choose a maximum length of 128 or less. 2) For all index levels, we use only the first element of the array as a pivot for comparison. 3) The last element of the array is considered solely during insertion operations, and only under particular conditions.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\linewidth]{figures/skiplist.png}
+\caption{A simple cache-sensitive skip list}
+  \label{fig:skiplist}
+\end{figure}
+
+Our key contributions include: 1. Introducing a vector, which maintains the algorithm's complexity while improving CPU cache hit rate due to its contiguous storage. 2. Reducing the skiplist's level count and pointer overhead by incorporating a vector. 3. Presenting vector-based insertion, search, and deletion algorithms for data nodes, offering a novel perspective for database index design.
+
+\section{Algorithm}
+This section gives the algorithm for search, insertion, and deletion. The insertion operation inserts new specified data into the data structure, and the search operation finds data and returns it. The deletion operation deletes data. 
+
+In SCSSL, at the data level, data is stored in a single array with a fixed maximum size. As the same as the standard skip list, the level of the node is chosen randomly when the node is created. And a level i node has the same number of forward pointers (also i), the maximum of levels is a constant MaxLevel. It also has a header that leads the search of the data structure, and the last nodes of all levels’ forward pointers point to NIL.
+
+
+\begin{figure}
+      \centering
+  \includegraphics[width=\linewidth]{figures/skipinsert.jpg}
+\caption{insert 8 into simple cache-sentive skip list(max array size =2)}
+\label{fig:fig2}
+\end{figure}
+
+\subsection{Initialization}
+The initialization operator is elementary, just create a header with MaxLevel forwards array, and set them to Nil. To simplify the algorithm, we set the header's array with a single value, -inf.
+
+
+\subsection{Search}
+\begin{algorithm}
+    \caption{Search Key in simple cache-sentive skip list}
+    \KwIn{Key $k$}
+    \KwOut{Node containing key or Nil}
+    \SetKwFunction{FMain}{search}
+    \SetKwProg{Fn}{Function}{:}{}
+    \Fn{\FMain{$k$}}{
+        $current \gets header$\;
+        
+        \For{$i \gets level$ \KwDownTo $0$}{
+            \While{$current.forward[i] \neq \text{Nil} \land current.forward[i].Key() \leq k$}{
+                $current \gets current.forward[i]$\;
+            }
+        }
+        
+        \KwRet{$current.search\_in\_array(k)$}\;
+    }
+\end{algorithm}
+
+As the algorithm shows in Algorithm 1, from line 3 to line 5, it’s very similar to a standard skip list, but in line 4,current.forward[i].Key() returns the least value(at the first position) of the array in the current.forward[i]. Out of the while loop, the current’s forward Key() must be just greater than key, and if the key exists in the data structure, it must be in the current node array, so just search in the array of the current node in line 6.
+
+
+\subsection{Insertion}
+\begin{algorithm}
+    \caption{Insert Key into simple cache-sentive skip list}
+    \KwIn{Key $k$}
+    \KwOut{Nil}
+    \SetKwFunction{FMain}{insert}
+    \SetKwProg{Fn}{Function}{:}{}
+    \Fn{\FMain{$k$}}{
+        $update \gets \text{array of size } (max\_level + 1)$\;
+        $current \gets header$\;
+        
+        \For{$i \gets \texttt{level}$ \KwDownTo $0$}{
+            \While{$current.forward[i] \neq \text{Nil} \land current.forward[i].Key() \leq k$}{
+                $current \gets current.forward[i]$\;
+            }
+            $update[i] \gets current$\;
+        }
+        
+        \If{$current \neq header \land current.is\_full() \land current.array[-1] > k$}{
+            $replace \gets current.array.pop()$\;
+            $current.insert\_into\_array(k)$\;
+            $k \gets replace$\;
+        }
+        
+        \If{$current \neq header \land \neg current.is\_full()$}{
+            $current.insert\_into\_array(k)$\;
+        }
+        \Else{
+            $current \gets current.forward[0]$\;
+            \If{$current \neq \text{Nil} \land current \neq header \land \neg current.is\_full()$}{
+                $current.insert\_into\_array(k)$\;
+                \KwRet{}
+            }
+            
+            $new\_level \gets random\_level()$\;
+            
+            \If{$new\_level > level$}{
+                \For{$i \gets level + 1 \KwDownTo new\_level$}{
+                    $update[i] \gets header$\;
+                }
+                $level \gets new\_level$\;
+            }
+            
+            $new\_node \gets Node([k], new\_level)$\;
+            
+            \For{$i \gets 0 $ \KwTo $new\_level$}{
+                $new\_node.forward[i] \gets update[i].forward[i]$\;
+                $update[i].forward[i] \gets new\_node$\;
+            }
+        }
+    }
+\end{algorithm}
+In Algorithm 2, from line 2 to line 7, it’s the same as a standard skip list. However, from line 8 to line 18, It should consider that level 0 nodes have a array. So there are several constraints which cannot be ignored:
+
+\begin{itemize}
+
+
+\item  If the current node is a header, a new node should be created to insert the key. We don’t want to insert data in the header; otherwise, it will be trouble for the deletion operation. So, in line 8-18, we exclude the header.
+  
+There are some cases for insertion:
+
+\item CASE 1: current is not header, but current array size reach the maximum size(current.is\_full() function to check it) and key value is between the least element (first position, Key() return it) and the largest element(last position, current.array[-1]). So in this case, current node’s array is full, we make a small strick to deal with it, we pop the last position element, so the array is not full, and we insert the key in current node array(line 9,10) and it must be full again.then go on the next steps(for example, we replace 9 with 8 , and then insert 9 in another node, see Figure 2).
+
+\item CASE 2: current is not header, current node’s array is not full, just insert the key in the array(line 12, 13). Then the insertion operation is finished.
+
+\item CASE 3: The key is lower than current.forward’s the least value of its array(ines 4-7 has insurance for this), and the key is greater than the largest element of current node’s array, So this key should be inserted into the current’s forward node. We just insert it when the node is not full (from line 15-18), and we do not pop last element like line 9-11, for just to be simple.
+\item Other CASES:  we should create a new node and insert the key in its array , and modify the forward pointers(from line 19 to 27)
+\end{itemize}
+
+\subsection{Deletion}
+
+\begin{algorithm}
+        \caption{Delete key from simple cache-sentive skip list}
+        \KwIn{Key $k$}
+        \KwOut{True if deleted, False otherwise}
+        \SetKwFunction{FMain}{delete}
+        \SetKwProg{Fn}{Function}{:}{}
+        \Fn{\FMain{$k$}}{
+            $update \gets \text{array of size } (max\_level + 1)$\;
+            $current \gets header$\;
+            
+            \For{$i \gets level$ \KwDownTo $0$}{
+                \While{$current.forward[i] \neq \text{Nil} \land current.forward[i].array[-1] < k$}{
+                    $current \gets current.forward[i]$\;
+                }
+                $update[i] \gets current$\;
+            }
+            
+            $current \gets current.forward[0]$\;
+            \If{$current = \text{Nil}$}{
+                \KwRet{False}\;
+            }
+            \Else{
+                $res \gets current.delete\_from\_array(k)$\;
+                \If{$\neg res$}{
+                    \KwRet{False}\;
+                }
+            }
+            
+            \If{$\text{len}(current.array) = 0$}{
+                \For{$i \gets$ 0 $\KwTo$ $level$}{
+                    \If{$update[i].forward[i] \neq current$}{
+                        \textbf{break}; % Use KwBreak instead of Break
+                    }
+                    $update[i].forward[i] \gets current.forward[i]$\;
+                }
+                
+                \While{$level > 0 \land header.forward[level] = \text{Nil}$}{
+                    $level \gets level - 1$\;
+                }
+                \KwRet{True}\;
+            }
+        }
+\end{algorithm}
+    
+
+
+
+The deletion algorithm is shown in Algorithm 3, which should be noted that in line 5,  the condition checks whether the current forward array's largest element is less than k, so out of the while loop,  current.forward[0] is the first node whose largest element is equal to or greater than k, which means that if the key exists, it must be in the current node’s forward[0] array. Line 8 to 14, delete the key in the selected array, and Line 15 to 21 checks whether the array is empty, if it is empty, we should delete the node from the data structure.
+
+
+\section{Evaluation}
+\subsection{Experimental Environment}
+
+Here are the overall environments:
+
+\textbf{Hardware}: We chose a MacBook whose CPU is Apple M2, and 16 GB of memory. and another server computer with Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz , 24G ddr4 2133 memory. We use this server computer not only to test the performance, but also to test the CPU cache miss.
+
+\textbf{Compiler}: We complete the algorithm in cpp codes, The test program is compiled by g++ with O3 optimization option. 
+
+\textbf{Benchmark}:  Because insert data in skip list, will more possibily cause CPU cache missing. so we test insertion with random data. and also give search test. The scale of data elements is from 100 to 300000. We do not present the search performance because the performance gap is negligible.
+
+
+\subsection{Performace}
+\begin{figure}
+\centering
+\begin{tikzpicture}[scale=0.6]
+\begin{axis}[
+    ybar,
+    bar width=10pt,
+    width=14cm,
+    height=9cm,
+    enlarge x limits=0.1,
+    xlabel={Size},
+    ylabel={Time (µs)},
+    symbolic x coords={100,1000,5000,10000,20000,50000,200000,250000,300000},
+    xtick=data,
+    legend style={at={(0.5,-0.15)},anchor=north,legend columns=2},
+    nodes near coords,
+    every node near coord/.append style={font=\tiny, rotate=90, anchor=west},
+    ymin=0,
+    ymajorgrids=true,
+    grid style=dashed
+]
+\addplot+[style={blue,fill=blue!30}] coordinates {
+    (100,19) (1000,222) (5000,1383) (10000,2654)  (20000,4474) (50000,11040) (200000,51209) (250000,66618) (300000,81313)
+};
+\addplot+[style={red,fill=red!30}] coordinates {
+    (100,14) (1000,174) (5000,994) (10000,2070)  (20000,2936) (50000,6986) (200000,30934) (250000,41203) (300000,51843)
+};
+
+\legend{SkipList, SCSL}
+\end{axis}
+\end{tikzpicture}
+\caption{Insertion Time Comparison Between SkipList and SCSL at Different Scales(smaller is better) in Macos}
+\end{figure}
+
+\begin{figure}
+\begin{tikzpicture}[scale=0.6]
+\begin{axis}[
+    width=14cm,
+    height=8cm,
+    ybar,
+    bar width=12pt,
+    symbolic x coords={100,1000,5000,10000,20000,50000,200000,250000,300000},
+    xtick=data,
+    xlabel={Data Size},
+    ylabel={Time (µs)},
+    legend style={at={(0.5,-0.2)},anchor=north,legend columns=-1},
+    enlarge x limits=0.08,
+    ymin=0,
+    grid=major,
+    nodes near coords,
+    nodes near coords style={font=\small, anchor=west, rotate=90, xshift=4pt},
+]
+
+\addplot coordinates {(100,62) (1000,719) (5000,2561) (10000,4532) (20000,8075) (50000,30651) (200000,150126) (250000,206036) (300000,249135)};
+\addplot coordinates {(100,40) (1000,294) (5000,1760) (10000,2531) (20000,4238) (50000,10462) (200000,54598) (250000,73624) (300000,92321)};
+
+\legend{SkipList, SCSL}
+\end{axis}
+\end{tikzpicture}
+\caption{Insertion Time Comparison Between SkipList and SCSL at Different Scales(smaller is better) in Server}
+\end{figure}
+
+We evaluated the standard skip list and SCSL with a maximum level of 16. Figure 3 presents the insertion performance comparison between the standard skip list and simple cache skip list in a Macbook. It shows that under small scale of data (< 1000) simple cache skip list can speed up to 1.28~1.39 times, and under medium scale (over 20000) , it can speed up to 1.55~1.65 times, as the scale increasing, the more benefit for performance. Figure 4 also shows that, in server computer, the simple cache skip list can speed up even 3 times.
+\begin{table*}[t]
+\begin{tabular}{lrrr}
+\toprule
+Test Case & Cache References & Cache Misses & Cache Misses Rate \\
+\midrule
+\verb|SCSL| & 51,567,218 & 459,636 & 0.89\% \\
+\verb|Standard Skip List| & 142,249,678 & 47,251,323 & 33.22\% \\
+\bottomrule
+\end{tabular}
+\caption{Cache Performance Comparison Between SCSL and standard Skip list in server computer}
+\end{table*}
+As shown in the table above(table 1), the standard skip list in the test achieves a 33.22\% cache-miss rate, whereas SCSL has only a 0.89\% cache-miss rate. It also proves that adding arrays to data nodes can work very well.
+
+
+
+\section{Conclusions}
+We present a new method to implement a cache-sensitive skip list, SCSL, which only changes a single element in the data-level nodes to an array. SCSL effectively leverages CPU caches by using data stored in continuous memory, and the algorithm is simple. Additionally, the performance results are also significant.
+\begin{thebibliography}{9} 
+\bibitem{ref1}
+      Skip Lists: A Probabilistic Alternative to Balanced Trees
+\bibitem{ref2}
+      Google. LevelDB. Available online: https://github.com/google/leveldb (accessed on 20 July 2023).
+\bibitem{ref3}
+      Facebook. RocksDB. Available online: http://rocksdb.org/ (accessed on 20 July 2023).
+\bibitem{ref4}
+      Apache. Welcome to Apache HBase™. Available online: https://hbase.apache.org/ (accessed on 20 July 2023).
+\bibitem{ref5}
+      Cache-Sensitive Skip List: Efficient Range Queries on modern CPUs - informatik.hu-berlin.de.
+\bibitem{ref6}
+      ESL: A High-Performance Skiplist with Express Lane  https://www.mdpi.com/2076-3417/13/17/9925
+\bibitem{ref7}
+	Redis, Accessed: 2024-01-09.
+\end{thebibliography}
+\end{document}
