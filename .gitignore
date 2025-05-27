@@ -1,2 +1,6 @@
 .vscode
 .DS_Store
+*.txt
+*.log
+*.out
+*.aux
