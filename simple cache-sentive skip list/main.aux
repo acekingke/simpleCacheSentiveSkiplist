@@ -12,23 +12,25 @@
 \providecommand \oddpage@label [2]{}
 \@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A simple cache-sensitive skip list}}{1}{figure.caption.3}\protected@file@percent }
-\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:skiplist}{{1}{1}{A simple cache-sensitive skip list}{figure.caption.3}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Design overview}{1}{section.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces insert 8 into simple cache-sentive skip list(max array size =2)}}{2}{figure.caption.4}\protected@file@percent }
-\newlabel{fig:fig2}{{2}{2}{insert 8 into simple cache-sentive skip list(max array size =2)}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A conceptual view of the Simple Cache-Sensitive Skip List (SCSSL) where data nodes (level 0) store arrays of elements (e.g., max array size = 2 as depicted). Index nodes point to the start of these arrays.}}{2}{figure.caption.3}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:conceptual_scssl}{{1}{2}{A conceptual view of the Simple Cache-Sensitive Skip List (SCSSL) where data nodes (level 0) store arrays of elements (e.g., max array size = 2 as depicted). Index nodes point to the start of these arrays}{figure.caption.3}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {3}Algorithm}{2}{section.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Insertion of key 8 into an SCSSL (max array size = 2). Key 8 displaces 9 from node (7,9). Key 9 is then inserted into a new node.}}{2}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:insertion_example}{{2}{2}{Insertion of key 8 into an SCSSL (max array size = 2). Key 8 displaces 9 from node (7,9). Key 9 is then inserted into a new node}{figure.caption.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Initialization}{2}{subsection.3.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Search}{2}{subsection.3.2}\protected@file@percent }
 \@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces Search Key in simple cache-sentive skip list}}{2}{algocf.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Insertion}{2}{subsection.3.3}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Insert Key into simple cache-sentive skip list}}{2}{algocf.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Insertion}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Insert Key into simple cache-sentive skip list}}{3}{algocf.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Deletion}{3}{subsection.3.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}Evaluation}{3}{section.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experimental Environment}{3}{subsection.4.1}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Delete key from simple cache-sentive skip list}}{3}{algocf.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Performace}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Delete key from simple cache-sentive skip list}}{4}{algocf.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Insertion Time Comparison Between SkipList and SCSL at Different Scales(smaller is better) in Macos}}{4}{figure.caption.8}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Insertion Time Comparison Between SkipList and SCSL at Different Scales(smaller is better) in Server}}{4}{figure.caption.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Results and Discussion}{4}{subsection.4.2}\protected@file@percent }
 \bibcite{ref1}{{1}{}{{}}{{}}}
 \bibcite{ref2}{{2}{}{{}}{{}}}
 \bibcite{ref3}{{3}{}{{}}{{}}}
@@ -42,10 +44,8 @@
 \newlabel{tocindent2}{11.81937pt}
 \newlabel{tocindent3}{0pt}
 \providecommand\NAT@force@numbers{}\NAT@force@numbers
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Cache Performance Comparison Between SCSL and standard Skip list in server computer}}{4}{table.caption.10}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Insertion Time Comparison Between SkipList and SCSL at Different Scales(smaller is better) in Macos}}{4}{figure.caption.8}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Insertion Time Comparison Between SkipList and SCSL at Different Scales(smaller is better) in Server}}{4}{figure.caption.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusions}{4}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{References}{4}{section*.12}\protected@file@percent }
-\newlabel{TotPages}{{4}{4}{}{page.4}{}}
-\gdef \@abspage@last{4}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Cache Performance Comparison Between SCSL and standard Skip list in server computer}}{5}{table.caption.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusions}{5}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{5}{section*.12}\protected@file@percent }
+\newlabel{TotPages}{{5}{5}{}{page.5}{}}
+\gdef \@abspage@last{5}
